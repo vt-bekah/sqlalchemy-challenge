@@ -39,8 +39,9 @@ def home():
         f"/api/v1.0/precipitation<br/>"
         f"/api/v1.0/stations<br/>"
         f"/api/v1.0/tobs<br/>"
-        f"/api/v1.0/<start><br/>"
-        f"/api/v1.0/<start>/<end><br/>"
+        f"Date range available is from 2010-01-01 to 2017-08-23<br/>"
+        f"Enter start date of format '/api/v1.0/YYYY-MM-DD':<br/> /api/v1.0/<start><br/>"
+        f"Enter start date / end date using this format '/api/v1.0/YYYY-MM-DD/YYYY-MM-DD':<br/> /api/v1.0/<start>/<end><br/>"
     )
 
 @app.route("/api/v1.0/precipitation")
@@ -105,15 +106,71 @@ def temperature():
     # Return a JSON list of stations from the dataset.
     return jsonify(USC00519281_temps)
 
-# @app.route("/api/v1.0/justice-league/<real_name>")
-# def justice_league_character(real_name):
-#     canonicalized = real_name.replace(" ", "").lower()
-#     for character in justice_league_members:
-#         search_term = character["real_name"].replace(" ", "").lower()
-#         if search_term == canonicalized:
-#             return jsonify(character)
-#     return jsonify({"error": f"Character with real_name {real_name} not found."}), 404
+# Date range available is from 2010-01-01 to 2017-08-03
+data_begin = dt.datetime.strptime("2010-01-01", '%Y-%m-%d')
+data_end = dt.datetime.strptime("2017-08-23", '%Y-%m-%d')
 
+@app.route("/api/v1.0/<start>")
+def start_stats(start):
+    try:
+        # If date is the wrong format, handle exception and indicate as such
+        startdate = dt.datetime.strptime(start, '%Y-%m-%d')
+        # Check startdate is within possible date range
+        if startdate >= data_begin and startdate <= data_end:
+        
+            # Create our session (link) from Python to the DB
+            session = Session(engine)
+            # Query the temperatures from the start date calculating min, max, average
+            stats = session.query(func.min(measurement.tobs), 
+                                func.max(measurement.tobs), 
+                                func.avg(measurement.tobs)).\
+                                    filter(measurement.date>=start).all()           
+            # Close session (rest of manipulation outside DB)
+            session.close()
+            
+            # Convert list of tuples into a regular list
+            stat_list = [item for t in stats for item in t]
+
+            # Return a JSON min, max, avg list of stations from the dataset.
+            return jsonify(stat_list)
+        
+        return jsonify({"error": f"Given start date, {start}, is outside available data, {data_begin.date()} to {data_end.date()}."}), 404
+    except (ValueError):
+        return jsonify({"error": f"Given start date, {start}, is not the correct format 'YYYY-MM-DD'"}), 404
+    
+@app.route("/api/v1.0/<start>/<end>")
+def start_end_stats(start,end):
+    try:
+        # If date is the wrong format, handle exception and indicate as such
+        startdate = dt.datetime.strptime(start, '%Y-%m-%d')
+        enddate = dt.datetime.strptime(end, '%Y-%m-%d')
+        # Check startdate is within possible date range
+        if startdate <= enddate:
+            if startdate >= data_begin and startdate <= data_end and enddate >= data_begin and enddate <= data_end:
+            
+                # Create our session (link) from Python to the DB
+                session = Session(engine)
+                # Query the temperatures from the start date calculating min, max, average
+                stats = session.query(func.min(measurement.tobs), 
+                                    func.max(measurement.tobs), 
+                                    func.avg(measurement.tobs)).\
+                                        filter(measurement.date>=start).\
+                                        filter(measurement.date<=end).all()           
+                # Close session (rest of manipulation outside DB)
+                session.close()
+                
+                # Convert list of tuples into a regular list
+                stat_list = [item for t in stats for item in t]
+
+                # Return a JSON min, max, avg list of stations from the dataset.
+                return jsonify(stat_list)
+            
+            return jsonify({"error": f"Given dates, {start} or {end}, is outside available data, {data_begin.date()} to {data_end.date()}."}), 404
+        else:
+            return jsonify({"error": f"Given start date, {start}, is after the end date, {end}."}), 404
+    except (ValueError):
+        return jsonify({"error": f"Given date(s), {start} and/or {end}, is not the correct format 'YYYY-MM-DD'"}), 404
+    
 
 if __name__ == "__main__":
     app.run(debug=True)
