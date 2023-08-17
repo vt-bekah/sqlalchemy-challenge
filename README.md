@@ -24,7 +24,7 @@ The following references were used in creating the solution within the SurfsUp f
 4. Add your Jupyter notebook and app.py to this folder. They’ll contain the main scripts to run for analysis. Also add the Resources folder, which contains the data files you will be using for this challenge.
 5. Push the changes to GitHub or GitLab.
 
-## Part 1: ANalyze and Explore the Climate Data
+## Part 1: Analyze and Explore the Climate Data
 In this section, you’ll use Python and SQLAlchemy to do a basic climate analysis and data exploration of your climate database. Specifically, you’ll use SQLAlchemy ORM queries, Pandas, and Matplotlib. To do so, complete the following steps:
 1. Note that you’ll use the provided files (climate_starter.ipynb and hawaii.sqlite) to complete your climate analysis and data exploration.
 2. Use the SQLAlchemy create_engine() function to connect to your SQLite database.
