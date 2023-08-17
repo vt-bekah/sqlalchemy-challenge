@@ -114,9 +114,9 @@ data_end = dt.datetime.strptime("2017-08-23", '%Y-%m-%d')
 def start_stats(start):
     try:
         # If date is the wrong format, handle exception and indicate as such
-        startdate = dt.datetime.strptime(start, '%Y-%m-%d')
+        start_date = dt.datetime.strptime(start, '%Y-%m-%d')
         # Check startdate is within possible date range
-        if startdate >= data_begin and startdate <= data_end:
+        if start_date >= data_begin and start_date <= data_end:
         
             # Create our session (link) from Python to the DB
             session = Session(engine)
@@ -142,11 +142,11 @@ def start_stats(start):
 def start_end_stats(start,end):
     try:
         # If date is the wrong format, handle exception and indicate as such
-        startdate = dt.datetime.strptime(start, '%Y-%m-%d')
-        enddate = dt.datetime.strptime(end, '%Y-%m-%d')
+        start_date = dt.datetime.strptime(start, '%Y-%m-%d')
+        end_date = dt.datetime.strptime(end, '%Y-%m-%d')
         # Check startdate is within possible date range
-        if startdate <= enddate:
-            if startdate >= data_begin and startdate <= data_end and enddate >= data_begin and enddate <= data_end:
+        if start_date <= end_date:
+            if start_date >= data_begin and start_date <= data_end and end_date >= data_begin and end_date <= data_end:
             
                 # Create our session (link) from Python to the DB
                 session = Session(engine)
