@@ -191,7 +191,7 @@ def start_end_stats(start,end):
                 # Return a JSON min, max, avg list of stations from the dataset.
                 return jsonify(stats)
             
-            return jsonify({"error": f"Given dates, {start} or {end}, is outside available data, {data_begin.date()} to {data_end.date()}."}), 404
+            return jsonify({"error": f"Given date(s), {start} and/or {end}, is outside available data, {data_begin.date()} to {data_end.date()}."}), 404
         else:
             return jsonify({"error": f"Given start date, {start}, is after the end date, {end}."}), 404
     except (ValueError):
