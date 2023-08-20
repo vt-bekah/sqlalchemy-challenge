@@ -52,8 +52,8 @@ def two_col_db_pull(col1, col2, order_col, filter1=default_start, filter2=defaul
 
 # Create a function for open, extract, close a session to the DB to gather 
 # minimum, maximum, and average of a singgle column of data that can be 
-# filtered by start and end dates (available dates from 2010-01-01 to 2017-08-03)
-def min_max_avg_dates(column, start_date="2010-01-01", end_date="2017-08-03"):
+# filtered by start and end dates (available dates from 2010-01-01 to 2017-08-23)
+def min_max_avg_dates(column, start_date="2010-01-01", end_date="2017-08-23"):
     # Create our session (link) from Python to the DB
     session = Session(engine)
     # Query the temperatures from the start date calculating min, max, average
@@ -153,7 +153,7 @@ def temperature():
     # Return a JSON list of stations from the dataset.
     return jsonify(USC00519281_temps)
 
-# Date range available is from 2010-01-01 to 2017-08-03
+# Date range available is from 2010-01-01 to 2017-08-23
 data_begin = dt.datetime.strptime("2010-01-01", '%Y-%m-%d')
 data_end = dt.datetime.strptime("2017-08-23", '%Y-%m-%d')
 
