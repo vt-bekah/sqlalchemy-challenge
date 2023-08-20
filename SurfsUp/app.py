@@ -23,6 +23,53 @@ Base.prepare(autoload_with=engine)
 measurement = Base.classes.measurement
 station = Base.classes.station
 
+##############################################################
+# Functions & related variables for common calls into Database
+##############################################################
+
+# Set default date filters to include all dates (available dates from 2010-01-01 to 2017-08-03)
+default_start=measurement.date>="2010-01-01"
+default_end=measurement.date<="2017-08-23"
+# Create variable for common year ago timeframe
+year_ago = dt.date(2017,8,23) - dt.timedelta(days=365)
+
+# Create a function for open, extract, close a session to the DB for 
+# 2 columns of data, up to 3 filters, and order by
+def two_col_db_pull(col1, col2, order_col, filter1=default_start, filter2=default_start, filter3=default_start): 
+    # Create session (link) from Python to the DB
+    session = Session(engine)
+
+    data_pull = session.query(col1, col2).\
+                                filter(filter1).\
+                                filter(filter2).\
+                                filter(filter3).\
+                                order_by(order_col).all()
+
+    # Close session (rest of manipulation outside DB)
+    session.close()
+
+    return(data_pull)
+
+# Create a function for open, extract, close a session to the DB to gather 
+# minimum, maximum, and average of a singgle column of data that can be 
+# filtered by start and end dates (available dates from 2010-01-01 to 2017-08-03)
+def min_max_avg_dates(column, start_date="2010-01-01", end_date="2017-08-03"):
+    # Create our session (link) from Python to the DB
+    session = Session(engine)
+    # Query the temperatures from the start date calculating min, max, average
+    stats = session.query(func.min(column), 
+                        func.avg(column), 
+                        func.max(column)).\
+                            filter(measurement.date>=start_date).\
+                            filter(measurement.date<=end_date).all()           
+    # Close session (rest of manipulation outside DB)
+    session.close()
+
+    # Convert list of tuples into a regular list
+    stat_list = [item for t in stats for item in t]
+
+    return (stat_list)
+
 #################################################
 # Flask Setup
 #################################################
@@ -35,29 +82,35 @@ app = Flask(__name__)
 def home():
     return (
         f"Welcome to the Hawaii Climate App<br/>"
+        f"<br/>"
         f"Available Routes:<br/>"
+        f"<br/>"
+        f"Convert the query results from your 12mo precipitation analysis:<br/>"
         f"/api/v1.0/precipitation<br/>"
+        f"<br/>"
+        f"Return a JSON list of stations from the dataset.<br/>"
         f"/api/v1.0/stations<br/>"
+        f"<br/>"
+        f"Query the dates and temperature observations of the most-active station for the previous year of data.<br/>"
         f"/api/v1.0/tobs<br/>"
+        f"<br/>"
+        f"Return minimum temperature, average temperature, maximum temperature for a specified start or start-end range.<br/>"
         f"Date range available is from 2010-01-01 to 2017-08-23<br/>"
-        f"Enter start date of format '/api/v1.0/YYYY-MM-DD':<br/> /api/v1.0/<start><br/>"
-        f"Enter start date / end date using this format '/api/v1.0/YYYY-MM-DD/YYYY-MM-DD':<br/> /api/v1.0/<start>/<end><br/>"
+        f"Enter start date of format '/api/v1.0/YYYY-MM-DD':<br/>"
+        f"/api/v1.0/<start><br/>"
+        f"<br/>"
+        f"Enter start date / end date using this format '/api/v1.0/YYYY-MM-DD/YYYY-MM-DD':<br/>"
+        f"/api/v1.0/<start>/<end><br/>"
     )
 
 @app.route("/api/v1.0/precipitation")
 def precipitation():
-    # Create our session (link) from Python to the DB
-    session = Session(engine)
-
-    # Query only the last 12 months of precipitation data and store it
-    year_ago = dt.date(2017,8,23) - dt.timedelta(days=365)
-    precip_12mo = session.query(measurement.date, measurement.prcp).\
-                    filter(measurement.date>=year_ago).\
-                    filter(measurement.prcp!="NaN").\
-                    order_by(measurement.date).all()
-    
-    # Close session (rest of manipulation outside DB)
-    session.close()
+    # Pull data using function
+    precip_12mo = two_col_db_pull(measurement.date, 
+                                  measurement.prcp, 
+                                  measurement.date, 
+                                  measurement.date>=year_ago, 
+                                  measurement.prcp!="NaN")
 
     # Convert list of tuples into a dictionary
     precip_dict = dict()
@@ -85,20 +138,14 @@ def stations():
     return jsonify(stations)
 
 @app.route("/api/v1.0/tobs")
-def temperature():
-    # Create our session (link) from Python to the DB
-    session = Session(engine)
-
-    # Query only the last 12 months of dates and temperature observations of the most-active station and store it
-    year_ago = dt.date(2017,8,23) - dt.timedelta(days=365)
-    USC00219281_temp_12mo = session.query(measurement.date, measurement.tobs).\
-                                filter(measurement.date>=year_ago).\
-                                filter(measurement.station=='USC00519281').\
-                                filter(measurement.tobs!="NaN").\
-                                order_by(measurement.date).all()
-    
-    # Close session (rest of manipulation outside DB)
-    session.close()
+def temperature():    
+    # Pull data using function
+    USC00219281_temp_12mo = two_col_db_pull(measurement.date, 
+                                            measurement.tobs, 
+                                            measurement.date, 
+                                            measurement.date>=year_ago, 
+                                            measurement.station=='USC00519281', 
+                                            measurement.tobs!="NaN")
 
     # Convert list of tuples into a regular list
     USC00519281_temps = [item for t in USC00219281_temp_12mo for item in t]
@@ -118,21 +165,11 @@ def start_stats(start):
         # Check startdate is within possible date range
         if start_date >= data_begin and start_date <= data_end:
         
-            # Create our session (link) from Python to the DB
-            session = Session(engine)
-            # Query the temperatures from the start date calculating min, max, average
-            stats = session.query(func.min(measurement.tobs), 
-                                func.max(measurement.tobs), 
-                                func.avg(measurement.tobs)).\
-                                    filter(measurement.date>=start).all()           
-            # Close session (rest of manipulation outside DB)
-            session.close()
-            
-            # Convert list of tuples into a regular list
-            stat_list = [item for t in stats for item in t]
+            # Pull data using function
+            stats = min_max_avg_dates(measurement.tobs, start)
 
             # Return a JSON min, max, avg list of stations from the dataset.
-            return jsonify(stat_list)
+            return jsonify(stats)
         
         return jsonify({"error": f"Given start date, {start}, is outside available data, {data_begin.date()} to {data_end.date()}."}), 404
     except (ValueError):
@@ -148,22 +185,11 @@ def start_end_stats(start,end):
         if start_date <= end_date:
             if start_date >= data_begin and start_date <= data_end and end_date >= data_begin and end_date <= data_end:
             
-                # Create our session (link) from Python to the DB
-                session = Session(engine)
-                # Query the temperatures from the start date calculating min, max, average
-                stats = session.query(func.min(measurement.tobs), 
-                                    func.max(measurement.tobs), 
-                                    func.avg(measurement.tobs)).\
-                                        filter(measurement.date>=start).\
-                                        filter(measurement.date<=end).all()           
-                # Close session (rest of manipulation outside DB)
-                session.close()
+                # Pull data using function
+                stats = min_max_avg_dates(measurement.tobs, start, end)
                 
-                # Convert list of tuples into a regular list
-                stat_list = [item for t in stats for item in t]
-
                 # Return a JSON min, max, avg list of stations from the dataset.
-                return jsonify(stat_list)
+                return jsonify(stats)
             
             return jsonify({"error": f"Given dates, {start} or {end}, is outside available data, {data_begin.date()} to {data_end.date()}."}), 404
         else:
